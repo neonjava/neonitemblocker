@@ -13,6 +13,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityToggleGlideEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -90,7 +93,7 @@ public class NeonItemBlocker extends JavaPlugin implements Listener, CommandExec
 
     // --- Event Listeners ---
 
-    // 1. Right/Left Click usage check
+    // 1. Right/Left Click usage check (prevents right-click equipping from hotbar)
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
@@ -175,6 +178,72 @@ public class NeonItemBlocker extends JavaPlugin implements Listener, CommandExec
         if (isBlocked(world, material)) {
             event.setCancelled(true);
             warnPlayer(player);
+        }
+    }
+
+    // 6. Gliding block (e.g. Elytra usage)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onEntityToggleGlide(EntityToggleGlideEvent event) {
+        if (event.getEntity() instanceof Player) {
+            Player player = (Player) event.getEntity();
+            World world = player.getWorld();
+            
+            // Check chestplate slot
+            ItemStack chest = player.getInventory().getChestplate();
+            if (chest != null && isBlocked(world, chest.getType())) {
+                event.setCancelled(true);
+                player.setGliding(false);
+                warnPlayer(player);
+            }
+        }
+    }
+
+    // 7. Inventory click block (prevents equipping via inventory click)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (event.getWhoClicked() instanceof Player) {
+            Player player = (Player) event.getWhoClicked();
+            World world = player.getWorld();
+
+            // Check if they are placing a blocked item in the chestplate slot (slot 38 / armor slot)
+            if (event.getSlotType() == InventoryType.SlotType.ARMOR) {
+                ItemStack cursor = event.getCursor();
+                if (cursor.getType() != Material.AIR && isBlocked(world, cursor.getType())) {
+                    event.setCancelled(true);
+                    warnPlayer(player);
+                    return;
+                }
+            }
+
+            // Check if shift clicking a blocked item while chestplate slot is empty (which would equip it)
+            if (event.isShiftClick()) {
+                ItemStack current = event.getCurrentItem();
+                if (current != null && current.getType() != Material.AIR && isBlocked(world, current.getType())) {
+                    // Check if target slot would be armor/chestplate
+                    if (current.getType() == Material.ELYTRA) {
+                        ItemStack chest = player.getInventory().getChestplate();
+                        if (chest == null || chest.getType() == Material.AIR) {
+                            event.setCancelled(true);
+                            warnPlayer(player);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 8. Fallback checks on move (if they somehow glide or move with blocked chestplate)
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        World world = player.getWorld();
+
+        if (player.isGliding()) {
+            ItemStack chest = player.getInventory().getChestplate();
+            if (chest != null && isBlocked(world, chest.getType())) {
+                player.setGliding(false);
+                warnPlayer(player);
+            }
         }
     }
 }

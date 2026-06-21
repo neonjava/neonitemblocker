@@ -11,6 +11,7 @@ blocked-items:
     - "WIND_CHARGE"
     - "END_CRYSTAL"
     - "LAVA_BUCKET"
+    - "ELYTRA"
   spawn_nether:
     - "BED"
     - "RESPAWN_ANCHOR"
