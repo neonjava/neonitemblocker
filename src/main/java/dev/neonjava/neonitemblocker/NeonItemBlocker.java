@@ -21,6 +21,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent;
 
 import java.util.*;
 
@@ -206,9 +207,9 @@ public class NeonItemBlocker extends JavaPlugin implements Listener, CommandExec
             World world = player.getWorld();
 
             // Check if they are placing a blocked item in the chestplate slot (slot 38 / armor slot)
-            if (event.getSlotType() == InventoryType.SlotType.ARMOR) {
+            if (event.getSlotType() == InventoryType.SlotType.ARMOR || event.getSlot() == 38) {
                 ItemStack cursor = event.getCursor();
-                if (cursor.getType() != Material.AIR && isBlocked(world, cursor.getType())) {
+                if (cursor != null && cursor.getType() != Material.AIR && isBlocked(world, cursor.getType())) {
                     event.setCancelled(true);
                     warnPlayer(player);
                     return;
@@ -229,10 +230,52 @@ public class NeonItemBlocker extends JavaPlugin implements Listener, CommandExec
                     }
                 }
             }
+
+            // Check hotbar swap (pressing a hotbar button over chestplate armor slot)
+            if (event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
+                if (event.getSlotType() == InventoryType.SlotType.ARMOR || event.getSlot() == 38) {
+                    int hotbarSlot = event.getHotbarButton();
+                    if (hotbarSlot >= 0 && hotbarSlot < 9) {
+                        ItemStack hotbarItem = player.getInventory().getItem(hotbarSlot);
+                        if (hotbarItem != null && isBlocked(world, hotbarItem.getType())) {
+                            event.setCancelled(true);
+                            warnPlayer(player);
+                        }
+                    }
+                }
+            }
         }
     }
 
-    // 8. Fallback checks on move (if they somehow glide or move with blocked chestplate)
+    // 8. PlayerArmorChangeEvent (Fires on dispensers, commands, clicks, hotbar right clicks)
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onArmorChange(PlayerArmorChangeEvent event) {
+        Player player = event.getPlayer();
+        World world = player.getWorld();
+        ItemStack newItem = event.getNewItem();
+
+        if (newItem != null && newItem.getType() != Material.AIR && isBlocked(world, newItem.getType())) {
+            if (event.getSlotType() == PlayerArmorChangeEvent.SlotType.CHEST) {
+                // Run on next tick to prevent Spigot/Client equipping desync loop
+                Bukkit.getGlobalRegionScheduler().run(this, task -> {
+                    ItemStack currentChest = player.getInventory().getChestplate();
+                    if (currentChest != null && isBlocked(world, currentChest.getType())) {
+                        player.getInventory().setChestplate(null);
+                        // Add to inventory or drop at player feet
+                        Map<Integer, ItemStack> leftover = player.getInventory().addItem(currentChest);
+                        if (!leftover.isEmpty()) {
+                            for (ItemStack item : leftover.values()) {
+                                player.getWorld().dropItemNaturally(player.getLocation(), item);
+                            }
+                        }
+                        warnPlayer(player);
+                    }
+                });
+            }
+        }
+    }
+
+    // 9. Fallback checks on move (if they somehow glide or move with blocked chestplate)
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
