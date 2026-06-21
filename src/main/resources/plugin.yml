@@ -1,0 +1,18 @@
+name: NeonItemBlocker
+version: 1.0.0
+main: dev.neonjava.neonitemblocker.NeonItemBlocker
+api-version: '1.21'
+author: neonjava
+description: Block specific items in specific worlds with action bar warning.
+folia-supported: true
+
+commands:
+  neonitemblocker:
+    description: Core command for NeonItemBlocker.
+    aliases: [nib]
+    permission: neonitemblocker.admin
+
+permissions:
+  neonitemblocker.admin:
+    description: Allows administrative commands for NeonItemBlocker.
+    default: op
