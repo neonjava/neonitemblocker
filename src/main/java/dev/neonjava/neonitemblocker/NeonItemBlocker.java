@@ -256,10 +256,10 @@ public class NeonItemBlocker extends JavaPlugin implements Listener, CommandExec
 
         if (newItem != null && newItem.getType() != Material.AIR && isBlocked(world, newItem.getType())) {
             if (event.getSlotType() == PlayerArmorChangeEvent.SlotType.CHEST) {
-                // Run on next tick to prevent Spigot/Client equipping desync loop
-                Bukkit.getGlobalRegionScheduler().run(this, task -> {
+                // Run on next tick on the player's entity thread to prevent Spigot/Client equipping desync loop and ensure thread safety on Folia
+                player.getScheduler().run(this, task -> {
                     ItemStack currentChest = player.getInventory().getChestplate();
-                    if (currentChest != null && isBlocked(world, currentChest.getType())) {
+                    if (currentChest != null && isBlocked(player.getWorld(), currentChest.getType())) {
                         player.getInventory().setChestplate(null);
                         // Add to inventory or drop at player feet
                         Map<Integer, ItemStack> leftover = player.getInventory().addItem(currentChest);
@@ -270,7 +270,7 @@ public class NeonItemBlocker extends JavaPlugin implements Listener, CommandExec
                         }
                         warnPlayer(player);
                     }
-                });
+                }, null);
             }
         }
     }

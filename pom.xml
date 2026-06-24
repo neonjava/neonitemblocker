@@ -59,7 +59,7 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>/home/neonjava/MinecraftDev/output_jars</outputDirectory>
+                            <outputDirectory>../output_jars</outputDirectory>
                             <finalName>NeonItemBlocker</finalName>
                         </configuration>
                     </execution>

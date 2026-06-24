@@ -3,7 +3,7 @@
 # Blocked material names must be valid Spigot Material enum names (uppercase).
 
 # Action bar warning message (uses MiniMessage format)
-warning-message: "<red><bold>You cannot use this item in this world!</bold></red>"
+warning-message: "<red>u cant use this item in this world</red>"
 
 # Map of world names to the list of blocked materials
 blocked-items:
